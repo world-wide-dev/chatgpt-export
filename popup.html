@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ChatGPT Exporter</title>
+    <style>
+      body {
+        width: 8rem;
+        color: seashell;
+        background-color: black;
+      }
+      .action-button {
+        line-height: 1.5;
+      }
+      .action-button:hover {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>ChatGPT Export</h3>
+    <hr/>
+    <div class="action-button" id="extract">[ Extract Conversation ]</div>
+    <hr/>
+    <div class="action-button" id="export-md">[ Export Markdown ]</div>
+    <div class="action-button" id="export-html">[ Export HTML ]</div>
+    <div class="action-button" id="export-json">[ Export JSON ]</div>
+    <div class="action-button" id="export-all">[ Export All ]</div>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

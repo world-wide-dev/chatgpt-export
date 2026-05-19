@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Conversation Exporter",
+  "version": "0.1.0",
+  "description": "Local-first ChatGPT conversation exporter",
+
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://images.openai.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_title": "ChatGPT Exporter",
+    "default_popup": "popup.html"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*"
+      ],
+      "js": ["vendor/jszip.min.js", "helper.js", "database.js", "extract.js", "vendor/turndown.js", "export.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+
+
