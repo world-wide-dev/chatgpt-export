@@ -12,7 +12,7 @@ Rather than cloning the ChatGPT UI directly, the extension extracts and normaliz
 
 ## Version
 
-Current version: 1.0.0
+Current version: 1.0.1
 
 ---
 
