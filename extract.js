@@ -102,41 +102,46 @@ async function extractMessage(messageNode, index = 0) {
   const images = [];
   const image_ids = [];
 
-  const imageNodes = content.querySelectorAll(".group\\/search-image");
+  const imageNodeImages = content.querySelectorAll("img");
 
-  for (const imageOrWhat of imageNodes) {
+  for (const imageNodeImage of imageNodeImages) {
     
     // Find common ancestor & proceed
-    let currentNode = imageOrWhat;  
+    let currentNode = imageNodeImage.parentElement.closest(".group\\/search-image");;  
+    let nextNode = null;
     let imageNode = null;    
+    let isGalleryImage = false;
 
     for (let i = 0; i < 3 && currentNode !== messageNode; i++) {  
+      if (!currentNode?.parentElement) {
+        break;
+      }      
       const nextNode = currentNode.parentElement;  
-      if (nextNode.querySelectorAll('.group\\/search-image').length > 1) {  
-        imageNode = nextNode;  
+      if (nextNode.querySelectorAll('img').length > 1) {  
+        imageNode = nextNode;
+        isGalleryImage = true;  
         break;  
       }  
       currentNode = nextNode;  
     }  
       
     if (!imageNode) {  
-      imageNode = imageOrWhat.querySelector('img');  
+      imageNode = imageNodeImage;  
     }
 
-
-    if (imageNode.tagName === "IMG" &&
-      imageNode.parentElement?.closest(".group\\/search-image")) {
+    if (isGalleryImage && imageNode.querySelector('img') !== imageNodeImage) {
       continue;
     }
 
-    if (imageNode.tagName === "IMG" && !imageNode.src) {
+    if (!isGalleryImage && !imageNode.src) {
       imageNode.remove();
       continue;
     }
 
+
     const imgWrapper = document.createElement("div");
 
-    if (imageNode.tagName === "IMG") {
+    if (!isGalleryImage) {
       imgWrapper.className = "non-gallery";
 
       // Image handling comes here for single (non-gallery) images

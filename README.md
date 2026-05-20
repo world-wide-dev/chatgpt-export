@@ -494,3 +494,12 @@ over visual cloning or frontend-specific assumptions.
 
 Ultimately, the project exists because reliable conversation preservation should not depend on transient frontend state.
 
+---
+
+### License
+
+MIT License – see LICENSE file for details.
+
+Copyright © 2026 Peter Karpati (world-wide-dev)
+
+
