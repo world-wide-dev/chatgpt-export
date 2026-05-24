@@ -1,5 +1,5 @@
 // ChatGPT Conversation Exporter (Extension)
-// Version 1.0.1
+// Version 1.0.2
 
 function onMessagesReady(callback) {
   let lastCount = 0;
@@ -57,17 +57,12 @@ function isLastMessageReady() {
 
   const last = messages[messages.length - 1];
 
-  const markdown = last.querySelector(".markdown");
+  if (!last) return false;
 
   return (
-    markdown &&
-    (
-      markdown.querySelectorAll("p, pre, ul, ol, img").length > 0 ||
-      markdown.innerText.trim().length > 0
-    )
+    last.querySelectorAll("p, pre, ul, ol, img").length > 0 ||
+    last.innerText.trim().length > 0
   );
-
-  //return markdown && markdown.innerText.trim().length > 0;
 }
 
 
@@ -83,7 +78,7 @@ async function updateConversationProgress(conversationId, extracting = false) {
   await saveConversation({
     id: conversationId,
     title: conversation.title,
-    model: conversation.model,
+    model: conversation.model ?? null,
     first_seen_at: conversation?.first_seen_at ?? now,
     updated_at: conversation?.updated_at ?? null,
     last_message_id: conversation?.last_message_id ?? null,
@@ -102,7 +97,7 @@ async function extractAndSave() {
   const conversation = {
     id: conversationId,
     title: dbConversation?.title ?? extractedConversation?.title,
-    model: dbConversation?.model ?? extractedConversation?.model,
+    model: dbConversation?.model ?? null,
     first_seen_at: dbConversation?.first_seen_at ?? now,
     updated_at: dbConversation?.updated_at ?? null,
     last_message_id: dbConversation?.last_message_id ?? null,
@@ -114,7 +109,7 @@ async function extractAndSave() {
 
   const thread = requireComponent(document.getElementById("thread"), "Thread container not found");
   
-  const wrappers = thread.querySelectorAll('[data-turn-id-container]');
+  const wrappers = thread.querySelectorAll('div[data-turn-id-container]');
   if (wrappers.length === 0) {
     throw new Error("No message sections found");
   }
@@ -122,24 +117,62 @@ async function extractAndSave() {
   let messageIndex = 0;
   let messageIdHit = conversation.last_message_id == null;
 
-  for (const wrapper of wrappers) {
+
+  async function resolveMessageNode(wrapper) {
     await hydrateElement(wrapper);
 
-    let messageNode = wrapper.querySelector("[data-message-id]");
+    let messageNode = wrapper.querySelector(
+      '[data-message-id], .group\\/imagegen-image'
+    );
+    //console.log(messageNode);
 
     for (let i = 0; i < 5 && !messageNode; i++) {
       await sleep(50);
 
-      messageNode = wrapper.querySelector("[data-message-id]");
+      messageNode = wrapper.querySelector(
+        '[data-message-id], .group\\/imagegen-image'
+      );
+      //console.log(messageNode);
     }
+
+    if (!messageNode) {
+      return null;
+    }
+
+    if (messageNode.matches('.group\\/imagegen-image')) {
+      const div = document.createElement('div');
+
+      div.dataset.messageId = uuidv7();
+      div.dataset.messageAuthorRole = 'assistant';
+
+      const markdown = document.createElement('div');
+      markdown.className = 'markdown';
+
+      const image = messageNode.querySelector(
+        'img:not([aria-hidden="true"])'
+      );
+
+      if (image) {
+        markdown.appendChild(
+          image.cloneNode(true)
+        );
+      }
+
+      div.appendChild(markdown);
+
+      return div;
+    }
+
+    return messageNode.cloneNode(true);
+  }
+
+
+  for (const wrapper of wrappers) {
+    const messageNode = await resolveMessageNode(wrapper);
 
     if (!messageNode) {
       continue;
       //throw new Error("Message ID missing after hydration retries");
-    }
-
-    if (messageNode.parentElement?.closest("[data-message-id]")) { 
-      continue; 
     }
 
 
@@ -285,21 +318,31 @@ async function main() {
 }
 
 
+// Extension init
+console.log("[ChatGPT Exporter] content script loaded");
+
 // Main logic
 onMessagesReady(async (readyMessages) => {
-  // Extension init
-  console.log("[ChatGPT Exporter] content script loaded");
-
   // wait until last message is actually ready
   while (!isLastMessageReady()) {
     await new Promise(r => setTimeout(r, 100));
   }
 
   await waitForConversationId("Conversation ID missing after hydration retries");
+  console.log(await getConversationById(conversationId));
     
   await resetAllConversations();
+  console.log("All conversation.extracting resset to false");
 
   setPageLoaded(true);
+
+  /*
+  const convoId = "69f79886-ac48-8328-9d3a-98fa285bce9f";
+  await removeConversationMessages(convoId);
+  const resetConversationLastMessageId = await getConversationById(convoId);
+  resetConversationLastMessageId.last_message_id = null;
+  await saveConversation(resetConversationLastMessageId);
+  */
 
   console.log("[ChatGPT Exporter] page content loaded");
 

@@ -324,9 +324,7 @@ async function downloadHTML() {
   }
 
   const exported_at = formatTimestamp(Date.now());
-  const messageCount =
-    (await getConversationMessages())
-      .length;  
+  const messageCount = messages.length;  
   const exporterString = `ChatGPT Export v${EXPORTER_VERSION}`;
 
   const meta = {
@@ -356,10 +354,12 @@ function handleImageForMarkdown(img, image) {
   const filename =
     `${image.hash}.${ext}`;
 
-  img.src = `images/${filename}`;
+  const path = `images/${filename}`;
+
+  img.src = path;
 
   return {
-    zipFile: img.src,
+    zipFile: path,
 
     zipBlob: 
       base64ToBlob(
@@ -378,9 +378,7 @@ async function downloadMarkdown() {
   messages.sort((a, b) => a.index - b.index); 
 
   const exported_at = formatTimestamp(Date.now());
-  const messageCount =
-    (await getConversationMessages())
-      .length;  
+  const messageCount = messages.length;  
   const exporterString = `ChatGPT Export v${EXPORTER_VERSION}`;
 
   let markdown = `

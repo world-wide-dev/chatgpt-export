@@ -156,7 +156,7 @@ async function getImageByHash(hash) {
 }
 
 
-async function getConversationMessages(conversationId) {
+async function getConversationMessages(convoId) {
   const db = await dbPromise;
 
   return new Promise((resolve, reject) => {
@@ -165,7 +165,7 @@ async function getConversationMessages(conversationId) {
     const store = tx.objectStore("messages");
     const index = store.index("conversation_id");
 
-    const req = index.getAll(conversationId);
+    const req = index.getAll(convoId);
 
     req.onsuccess = () => resolve(req.result || []);
     req.onerror = () => reject(req.error);
@@ -207,6 +207,54 @@ async function getImageById(id) {
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+  });
+}
+
+
+async function removeConversationMessages(convoId /* = conversationId */) {
+  requireComponent(convoId, '[Database] removeConversationMessages(): missing conversation ID');
+
+  const db = await dbPromise;
+
+  console.log(convoId);
+
+  const tx = db.transaction('messages', 'readwrite');
+  const store = tx.objectStore('messages');
+
+  const index = store.index('conversation_id');
+  const range = IDBKeyRange.only(convoId);
+
+  return new Promise((resolve, reject) => {
+    let deleted = 0;
+
+    const request = index.openCursor(range);
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+
+      if (!cursor) {
+        resolve(deleted);
+        return;
+      }
+
+      cursor.delete();
+      deleted += 1;
+
+      cursor.continue();
+    };
+
+    tx.oncomplete = () => {
+      console.log(`Deleted from ${id}:`, deleted);
+      resolve(deleted);
+    };
+
+    tx.onerror = () => {
+      reject(tx.error);
+    };
   });
 }
 

@@ -11,7 +11,9 @@ async function extractConversation() {
     throw new Error("No message wrappers found");
   }
   
+  await hydrateElement(wrappers[0]);
 
+  /*
   // First assistant message
   let firstAssistantMessage = null;
 
@@ -41,14 +43,11 @@ async function extractConversation() {
     const modelNode = firstAssistantMessage.querySelector("[data-message-model-slug]");
     model = modelNode?.dataset?.messageModelSlug ?? null;
   }
-
+  */
 
   return {
     id: conversationId,
-
-    title: conversation?.title ?? document.title ?? null,
-
-    model,
+    title: conversation?.title ?? document.title ?? null
   };
 }
 
@@ -60,17 +59,25 @@ async function extractMessage(messageNode, index = 0) {
     "Message ID missing in passed in messageNode"
   );
 
+  const conversation = await getConversationById(conversationId);
+
   const role = messageNode.dataset.messageAuthorRole;
   
   const model = messageNode
     ?.querySelector("[data-message-model-slug]")
     ?.dataset?.messageModelSlug ?? null;
 
+  
+  if (conversation.model == null && model != null) {
+    conversation.model = model;
+    await saveConversation(conversation);
+  }
 
-  // content_html
+
+    // content_html
   //console.log(messageNode);
-  const content =
-  messageNode.cloneNode(true);
+  //const content = messageNode.cloneNode(true);
+  const content = messageNode;
   //console.log(messageNode);
 
 
