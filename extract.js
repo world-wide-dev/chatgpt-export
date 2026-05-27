@@ -13,48 +13,74 @@ async function extractConversation() {
   
   await hydrateElement(wrappers[0]);
 
-  /*
-  // First assistant message
-  let firstAssistantMessage = null;
+  function stripProjectPrefix(rawTitle) {
+    const projectSlug =
+      location.pathname
+        .match(/\/g\/([^/]+)\//)
+        ?.[1]
+        ?.replace(
+          /^g-p-[a-f0-9]{32}-/,
+          ''
+        )
+        .trim()
+        .toLowerCase()
+        ?? null;
 
-  for (const wrapper of wrappers) {
-    await hydrateElement(wrapper);
-
-    let messageNode = wrapper.querySelector("[data-message-id]");
-
-    for (let i = 0; i < 5 && !messageNode; i++) {
-      await sleep(50);
-
-      messageNode = wrapper.querySelector("[data-message-id]");
-}
-
-    if (messageNode?.dataset?.messageAuthorRole === "assistant") {
-      firstAssistantMessage = messageNode;
-
-      break;
+    if (!projectSlug || !rawTitle) {
+      return rawTitle;
     }
+
+    const normalizedProject =
+      normalizeConversationTitle(
+        projectSlug
+      );
+
+    const normalizedTitle =
+      normalizeConversationTitle(
+        rawTitle
+      );
+
+    if (
+      !normalizedTitle.startsWith(
+        normalizedProject
+      )
+    ) {
+      return rawTitle;
+    }
+
+    const separatorMatch =
+      rawTitle.match(
+        /^(.+?)(\s*[-–—:|]\s*)/
+      );
+
+    if (!separatorMatch) {
+      return rawTitle;
+    }
+
+    return rawTitle
+      .slice(separatorMatch[0].length)
+      .trim();
   }
 
+  const rawTitle =
+    conversation?.title
+    ?? document.title
+    ?? null;
 
-  // Model
-  let model = conversation?.model ?? null;
+  const title =
+    stripProjectPrefix(rawTitle);
 
-  if (!model && firstAssistantMessage) {
-    const modelNode = firstAssistantMessage.querySelector("[data-message-model-slug]");
-    model = modelNode?.dataset?.messageModelSlug ?? null;
-  }
-  */
 
   return {
     id: conversationId,
-    title: conversation?.title ?? document.title ?? null
+    title
   };
 }
 
 
 // Message section extractor
 async function extractMessage(messageNode, index = 0) {
-  const id = requireComponent(
+  const messageNodeId = requireComponent(
     messageNode?.dataset?.messageId,
     "Message ID missing in passed in messageNode"
   );
@@ -81,6 +107,7 @@ async function extractMessage(messageNode, index = 0) {
   //console.log(messageNode);
 
 
+  /*
   if (role === "user") {
     const toggle = [
       ...content.querySelectorAll("label")
@@ -103,6 +130,7 @@ async function extractMessage(messageNode, index = 0) {
       input?.remove();
     }
   }
+  */
 
 
   // Image extraction + clone <img> tag src -> dataset.imageId & alt
@@ -176,6 +204,12 @@ async function extractMessage(messageNode, index = 0) {
       canonicalImg.alt = canonicalImage.alt ?? "";
 
       imgWrapper.appendChild(canonicalImg);
+
+      if (messageNode.dataset.messageType === 'imagegen') {
+        messageNode.id = `imagegen-${canonicalImg.dataset.imageId}`;
+        messageNode.dataset.messageId = `imagegen-${canonicalImg.dataset.imageId}`;
+        messageNode.dataset.messageHash = canonicalImg.dataset.imageHash;
+      }
       
       imageNode.replaceWith(imgWrapper);
 
@@ -268,6 +302,7 @@ async function extractMessage(messageNode, index = 0) {
   content.querySelectorAll("script, style")
     .forEach(el => el.remove());
 
+  /*
   content
     .querySelectorAll(
       '[data-testid="copy-turn-action-button"]'
@@ -277,12 +312,30 @@ async function extractMessage(messageNode, index = 0) {
         .closest('[role="group"]')
         ?.remove();
     });
+  */
   
+  /*
+  content
+    .querySelectorAll(
+      '[role="group"][aria-label]'
+    )
+    .forEach(
+      node => node.remove()
+    );
+  */
+
+  content.querySelectorAll('[data-testid="collapsible-user-message-toggle"]').forEach(btn => btn.remove());
+
 
   const content_html = content.innerHTML.trim();
 
 
-  requireComponent(id, "FATAL ERROR: Message inconsistency: Message failed to provide ID at border control");
+  /*
+  requireComponent(messageNodeId, "FATAL ERROR: Message inconsistency: Message failed to provide ID at border control");
+  */
+
+
+  const id = messageNode.dataset.messageType === 'imagegen' ? messageNode.dataset.messageId : messageNodeId;
 
 
   return {

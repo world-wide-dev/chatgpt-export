@@ -248,7 +248,7 @@ async function removeConversationMessages(convoId /* = conversationId */) {
     };
 
     tx.oncomplete = () => {
-      console.log(`Deleted from ${id}:`, deleted);
+      console.log(`Deleted from ${convoId}:`, deleted);
       resolve(deleted);
     };
 

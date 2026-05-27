@@ -8,20 +8,35 @@ function onMessagesReady(callback) {
 
   const isGenerating = () => {
     return [...document.querySelectorAll("button")]
-      .some(btn => btn.innerText.toLowerCase().includes("stop"));
+      .some(btn =>
+        btn.innerText.toLowerCase().includes("stop")
+      );
+  };
+
+  const finalize = (readyMessages) => {
+    observer.disconnect();
+    clearInterval(interval);
+
+    callback(readyMessages);
   };
 
   const check = () => {
-    const messages = document.querySelectorAll('[data-turn-id-container]');
+    const messages =
+      document.querySelectorAll(
+        '[data-turn-id-container]'
+      );
 
     const readyMessages = [...messages];
 
     const count = readyMessages.length;
 
-    if (count === 0) return;
+    if (count === 0) {
+      return;
+    }
 
-    // If generating → don't proceed
-    if (isGenerating()) return;
+    if (isGenerating()) {
+      return;
+    }
 
     if (count === lastCount) {
       stableCount++;
@@ -30,22 +45,26 @@ function onMessagesReady(callback) {
       lastCount = count;
     }
 
-    if (stableCount >= 3) {
+    if (stableCount === 3) {
       clearTimeout(timeout);
+
       timeout = setTimeout(() => {
-        observer.disconnect();
-        //setPageLoaded(true);
-        callback(readyMessages);
+        finalize(readyMessages);
       }, 300);
     }
   };
 
-  const observer = new MutationObserver(check);
+  const observer =
+    new MutationObserver(check);
 
   observer.observe(document.body, {
     childList: true,
     subtree: true
   });
+
+  // periodic fallback check
+  const interval =
+    setInterval(check, 250);
 
   check();
 }
@@ -117,6 +136,8 @@ async function extractAndSave() {
   let messageIndex = 0;
   let messageIdHit = conversation.last_message_id == null;
 
+  const shouldHaveLastMessageId = conversation.last_message_id ?? null;
+
 
   async function resolveMessageNode(wrapper) {
     await hydrateElement(wrapper);
@@ -144,6 +165,7 @@ async function extractAndSave() {
 
       div.dataset.messageId = uuidv7();
       div.dataset.messageAuthorRole = 'assistant';
+      div.dataset.messageType = 'imagegen';
 
       const markdown = document.createElement('div');
       markdown.className = 'markdown';
@@ -186,8 +208,22 @@ async function extractAndSave() {
     const messageId = requireComponent(messageNode.dataset.messageId, "Message ID unhallucinatedly broken again");
 
     if (!messageIdHit) {
-      if (messageId === conversation.last_message_id) {
+      if (messageNode.dataset.messageType === 'imagegen') {
+        const result = await extractMessage(messageNode, messageIndex);
+        
+        if (result.message.id === shouldHaveLastMessageId) {
+          messageIdHit = true;
+        }
+
+        messageIndex++;
+        continue;
+      }
+
+      if (messageId === shouldHaveLastMessageId) {
         messageIdHit = true;
+
+        messageIndex++;
+        continue;
       }
 
       messageIndex++;
@@ -203,13 +239,13 @@ async function extractAndSave() {
 
     conversation.updated_at = Date.now();
     conversation.last_message_id = result.message.id;
-    
+
     await saveConversation(conversation);
 
     messageIndex++;
   }
 
-  if (conversation.last_message_id && !messageIdHit) {
+  if (shouldHaveLastMessageId && !messageIdHit) {
     throw new Error(
       "Last message id not found during traversal"
     );
@@ -253,6 +289,11 @@ async function exportHandler(msg, sender, sendResponse) {
   //console.log("[CONTENT] got message:", msg);
   
   switch (msg.action) {
+    case "IS_PAGE_LOADED":
+      console.log("IS_PAGE_LOADED query received");
+      sendResponse(isPageLoaded);
+      break;
+
     case "EXTRACT":
       console.log("EXTRACT message received");
       await main();

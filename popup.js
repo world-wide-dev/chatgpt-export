@@ -5,7 +5,27 @@ function send(action) {
 }
 
 
-document.addEventListener("DOMContentLoaded", () => {
+function sendAwaitResponse(action) {
+  return new Promise((resolve) => {
+
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+
+        chrome.tabs.sendMessage(
+          tab.id,
+          { action },
+          (response) => {
+            resolve(response);
+          }
+        );
+
+      }
+    );
+
+  });
+}
+
+
+document.addEventListener("DOMContentLoaded", async () => {
   console.log("[POPUP] loaded");
 
   document.getElementById("extract").onclick = () => {
@@ -32,6 +52,114 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("[POPUP] Clicked Export DataBase");
     send("EXPORT_DB");
   };
+
+  // Page loaded - Unlock action buttons
+  const block = document.getElementById('page-load-block');
+
+  /*
+  let ready = await sendAwaitResponse('IS_PAGE_LOADED');
+
+  block.style.display = ready ? 'none' : 'flex';
+
+  async function refreshReadyState() {
+    const ready = await sendAwaitResponse('IS_PAGE_LOADED');
+
+    block.style.display = ready ? 'none' : 'flex';
+
+    if (ready) {
+      clearInterval(interval);
+    }
+  }
+
+  const interval = setInterval(refreshReadyState, 100);
+
+  await refreshReadyState();
+  */
+
+  let attempts = 0;
+
+  async function refreshReadyState() {
+    attempts++;
+
+    try {
+      const ready = await sendAwaitResponse("IS_PAGE_LOADED");
+
+      if (ready) {
+        clearInterval(interval);
+
+        block.style.display = "none";
+
+        return;
+      }
+
+    } catch {}
+
+    if (attempts === 100 && !block.dataset.warningShown) {
+
+      block.dataset.warningShown = 'true';
+
+      //clearInterval(interval);
+
+      block.innerHTML = '';
+
+      chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+        const isConversationPage = /\/c\/|\/g\/.*\/c\//.test(tab?.url ?? '');
+
+        function restoreLoading(wrapperBlock) {
+          const div = document.createElement('div');
+          div.id = 'page-loading';
+
+          const span = document.createElement('span');
+          span.id = 'page-loading-label';
+          span.innerText = "Awaiting page load...";
+
+          wrapperBlock.innerHTML = '';
+          wrapperBlock.appendChild(div);
+          wrapperBlock.appendChild(span);
+          delete wrapperBlock.dataset.warningShown;
+        }
+
+        if (isConversationPage) {
+
+          const div = document.createElement('div');
+          div.className = 'popup-warning';
+
+          const span = document.createElement('span');
+          span.innerText = "Page appears stalled or extension was reloaded.\n\nRefresh page?";
+
+          const refreshBtn = document.createElement('button');
+          refreshBtn.innerText = "Refresh page";
+          refreshBtn.onclick = () => {
+            refreshBtn.remove();
+            restoreLoading(block);
+            chrome.tabs.reload(tab.id);
+          };
+
+          div.appendChild(span);
+          div.appendChild(refreshBtn);
+
+          block.appendChild(div);
+
+        } else {
+
+          const div = document.createElement('div');
+          div.className = 'popup-warning';
+
+          const span = document.createElement('span');
+          span.innerText = "Open a ChatGPT conversation page first.";
+          span.style.color = "red";
+
+          div.appendChild(span);    
+          
+          block.appendChild(div);
+        }
+      });
+
+    }
+
+  }
+  
+  const interval = setInterval(refreshReadyState, 100);
 });
 
 
