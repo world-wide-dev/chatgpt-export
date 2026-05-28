@@ -1,5 +1,5 @@
 // ChatGPT Conversation Exporter (Extension)
-// Version 1.0.2
+// Version 1.0.3
 
 function onMessagesReady(callback) {
   let lastCount = 0;

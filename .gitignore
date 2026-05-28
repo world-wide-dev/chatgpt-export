@@ -2,3 +2,6 @@
 releases/
 snapshots/
 test/
+
+# non-public building inside jokes
+cursed-notes.md

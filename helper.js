@@ -1,6 +1,6 @@
 // Helper functions
 
-const EXPORTER_VERSION = "1.0.2";
+const EXPORTER_VERSION = "1.0.3";
   
 
 let conversationId = null;
