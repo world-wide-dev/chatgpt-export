@@ -42,7 +42,7 @@ The goal is to preserve conversations as durable structured documents.
 
 ## Features
 
-- Incremental conversation extraction
+- Incremental extraction and synchronization
 - Hydration-aware extraction pipeline
 - Stable canonical local snapshots
 - Deterministic HTML export
@@ -81,18 +81,22 @@ Download and extract the project ZIP locally.
 
 ## Usage
 
-1. Open a ChatGPT conversation
+1. Open a ChatGPT conversation or project conversation
 2. Click Extract Conversation
 3. Wait for extraction to complete
 4. Export using one of the available formats:
-  - Markdown
-  - HTML
-  - JSON
-  - Full database dump
+   - Markdown
+   - HTML
+   - JSON
+   - Full database dump
 
-Exports operate exclusively on the latest successfully extracted local snapshot of the conversation.
+Re-running extraction incrementally updates the locally stored canonical snapshot and only processes newly discovered content.
 
-Re-running extraction incrementally updates the locally stored canonical snapshot.
+The extension supports repeated extraction runs on the same conversation and automatically resumes from the latest known message boundary.
+
+If the extension is reloaded while ChatGPT is already open, the popup may offer a page refresh option to restore communication with the content script.
+
+When opened on unsupported pages, the extension displays guidance instead of attempting extraction.
 
 ---
 
@@ -296,6 +300,8 @@ This avoids runtime-specific layout instability while preserving:
 
 The extraction layer intentionally avoids relying on transient frontend layout wrappers whenever possible.
 
+Generated image messages are normalized into deterministic canonical identifiers to preserve stable extraction and incremental synchronization behavior.
+
 ---
 
 ## Persistence Model
@@ -437,19 +443,20 @@ The export prioritizes readability and durability over visual fidelity to the li
 
 ---
 
-## Future Considerations
+## Roadmap
 
-Potential future additions:
+### v1.1.0
 
-- syntax highlighting during HTML rendering
-- full-text search
-- bulk export
-- optional external sync
-- additional export renderers
-- extraction interruption / resume support
-- per-conversation extraction status indicators
+- syntax highlighting
+- code block copy buttons
+- code export UX improvements
 
-The project intentionally avoids uncontrolled feature growth in favor of maintaining a stable archival core.
+### v2.0.0
+
+- conversation switching
+- runtime synchronization improvements
+- cross-conversation state handling
+- archive lifecycle management
 
 ---
 

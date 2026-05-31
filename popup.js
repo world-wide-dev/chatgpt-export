@@ -56,25 +56,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Page loaded - Unlock action buttons
   const block = document.getElementById('page-load-block');
 
-  /*
-  let ready = await sendAwaitResponse('IS_PAGE_LOADED');
-
-  block.style.display = ready ? 'none' : 'flex';
-
-  async function refreshReadyState() {
-    const ready = await sendAwaitResponse('IS_PAGE_LOADED');
-
-    block.style.display = ready ? 'none' : 'flex';
-
-    if (ready) {
-      clearInterval(interval);
-    }
-  }
-
-  const interval = setInterval(refreshReadyState, 100);
-
-  await refreshReadyState();
-  */
 
   let attempts = 0;
 

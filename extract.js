@@ -13,63 +13,39 @@ async function extractConversation() {
   
   await hydrateElement(wrappers[0]);
 
-  function stripProjectPrefix(rawTitle) {
-    const projectSlug =
-      location.pathname
-        .match(/\/g\/([^/]+)\//)
-        ?.[1]
-        ?.replace(
-          /^g-p-[a-f0-9]{32}-/,
-          ''
-        )
-        .trim()
-        .toLowerCase()
-        ?? null;
+  function getConversationTitle() {
+    try {
 
-    if (!projectSlug || !rawTitle) {
-      return rawTitle;
-    }
+      const activeConversation =
+        document.querySelector(
+          'a[data-active][data-sidebar-item]'
+        );
 
-    const normalizedProject =
-      normalizeConversationTitle(
-        projectSlug
+      const title =
+        activeConversation
+          ?.querySelector('[title]')
+          ?.getAttribute('title')
+          ?.trim();
+
+      return title || null;
+
+    } catch (error) {
+
+      console.warn(
+        "[TITLE] sidebar lookup failed",
+        error
       );
 
-    const normalizedTitle =
-      normalizeConversationTitle(
-        rawTitle
-      );
-
-    if (
-      !normalizedTitle.startsWith(
-        normalizedProject
-      )
-    ) {
-      return rawTitle;
+      return null;
     }
-
-    const separatorMatch =
-      rawTitle.match(
-        /^(.+?)(\s*[-–—:|]\s*)/
-      );
-
-    if (!separatorMatch) {
-      return rawTitle;
-    }
-
-    return rawTitle
-      .slice(separatorMatch[0].length)
-      .trim();
   }
 
-  const rawTitle =
-    conversation?.title
-    ?? document.title
-    ?? null;
+  const title = conversation?.title ?? getConversationTitle() ?? document.title ?? null;
 
-  const title =
-    stripProjectPrefix(rawTitle);
-
+  /*
+  console.log(conversation?.title, getConversationTitle(), document.title);
+  console.log({ id: conversationId, title });
+  */
 
   return {
     id: conversationId,
@@ -105,32 +81,6 @@ async function extractMessage(messageNode, index = 0) {
   //const content = messageNode.cloneNode(true);
   const content = messageNode;
   //console.log(messageNode);
-
-
-  /*
-  if (role === "user") {
-    const toggle = [
-      ...content.querySelectorAll("label")
-    ].find(label =>
-      /Afficher|Show|Hide/i.test(
-        label.textContent
-      )
-    );
-
-    if (toggle) {
-      const inputId =
-        toggle.getAttribute("for");
-
-      const input =
-        content.querySelector(
-          `input[id="${inputId}"]`
-        );
-
-      toggle.remove();
-      input?.remove();
-    }
-  }
-  */
 
 
   // Image extraction + clone <img> tag src -> dataset.imageId & alt
@@ -263,6 +213,11 @@ async function extractMessage(messageNode, index = 0) {
 
   for (const pre of preTags) {
 
+    pre.querySelectorAll("br")
+      .forEach(br =>
+        br.replaceWith("\n")
+      );
+
     const code =
       pre.querySelector("code");
 
@@ -301,28 +256,6 @@ async function extractMessage(messageNode, index = 0) {
   // Remove obvious UI junk
   content.querySelectorAll("script, style")
     .forEach(el => el.remove());
-
-  /*
-  content
-    .querySelectorAll(
-      '[data-testid="copy-turn-action-button"]'
-    )
-    .forEach(button => {
-      button
-        .closest('[role="group"]')
-        ?.remove();
-    });
-  */
-  
-  /*
-  content
-    .querySelectorAll(
-      '[role="group"][aria-label]'
-    )
-    .forEach(
-      node => node.remove()
-    );
-  */
 
   content.querySelectorAll('[data-testid="collapsible-user-message-toggle"]').forEach(btn => btn.remove());
 
