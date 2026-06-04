@@ -12,7 +12,7 @@ Rather than cloning the ChatGPT UI directly, the extension extracts and normaliz
 
 ## Version
 
-Current version: 1.0.3
+Current version: 1.0.4
 
 ---
 
@@ -49,7 +49,11 @@ The goal is to preserve conversations as durable structured documents.
 - Deterministic Markdown export
 - JSON export
 - Full database dump export
-- Canonical image and gallery reconstruction
+- Canonical image extraction and preservation
+- Gallery reconstruction
+- Shopping gallery extraction and normalization
+- Conversation metadata inspection
+- Editable conversation titles
 - Incremental IndexedDB persistence
 - Safe re-extraction and update handling
 - Local-first architecture
@@ -84,7 +88,8 @@ Download and extract the project ZIP locally.
 1. Open a ChatGPT conversation or project conversation
 2. Click Extract Conversation
 3. Wait for extraction to complete
-4. Export using one of the available formats:
+4. Review conversation metadata if desired
+5. Export using one of the available formats:
    - Markdown
    - HTML
    - JSON
@@ -290,6 +295,7 @@ from canonical semantic representations.
 ### Image Preservation
 
 Images are extracted independently from runtime wrappers and reinjected into canonical semantic structures during normalization.
+Shopping and gallery-style image groups are normalized into canonical gallery structures, allowing deterministic export generation without relying on OpenAI-specific gallery layouts.
 
 This avoids runtime-specific layout instability while preserving:
 
@@ -336,6 +342,8 @@ This enables:
   "extracting": false
 }
 ```
+
+Conversation metadata can be inspected and edited from the extension popup without requiring re-extraction.
 
 ---
 
@@ -454,6 +462,8 @@ The export prioritizes readability and durability over visual fidelity to the li
 ### v2.0.0
 
 - conversation switching
+- archive management
+- metadata editing expansion
 - runtime synchronization improvements
 - cross-conversation state handling
 - archive lifecycle management

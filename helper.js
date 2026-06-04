@@ -1,7 +1,10 @@
 // Helper functions
 
-const EXPORTER_VERSION = "1.0.3";
+const EXPORTER_VERSION = "1.0.4";
   
+
+const WHO_IS_TO_BLAME = "OpenAI";
+
 
 let conversationId = null;
 

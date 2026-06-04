@@ -54,6 +54,93 @@ async function extractConversation() {
 }
 
 
+async function extractShoppingGallery(shoppingGalleryNode) {
+  const images = [];
+  const image_ids = [];
+
+  const canonicalShoppingGallery = document.createElement('div');
+
+  canonicalShoppingGallery.className = 'shopping-gallery';
+
+  const metadataNodes = shoppingGalleryNode.querySelectorAll('[data-shopping-browse-product-metadata]');
+
+  for (const metadataNode of metadataNodes) {
+
+    let card = metadataNode;
+    let imageNode = null;
+
+    for (let i = 0; i < 3 && !imageNode; i++) {
+        imageNode = card.querySelector('img');
+
+        if (imageNode) { break; }
+
+        card = card.parentElement;
+
+        if (!card) { break; }
+    }
+
+    if (!imageNode) {
+        throw new Error("FATAL ERROR: OPENAI DID IT AGAIN");
+    }    
+
+    if (!imageNode.src) {
+      imageNode.dataset.extracted = "true";
+      continue;
+    }
+
+    
+    const image = await extractImage(imageNode);
+    const existing = await getImageByHash(image.hash);
+
+    let canonicalImage = image;
+
+    if (existing) {
+      // Check if base64 string matches too
+      // - Yes -> skip saving image (still save in message content_html though), continue;
+      // - No -> go on with full save
+      if (existing.data_base64 === image.data_base64) {
+        canonicalImage = existing;
+      }
+    }
+
+    image_ids.push(canonicalImage.id);
+    images.push(canonicalImage);
+
+    const canonicalImg = document.createElement("img");
+
+    canonicalImg.dataset.imageId = canonicalImage.id;
+    canonicalImg.dataset.imageHash = canonicalImage.hash;
+    canonicalImg.alt = canonicalImage.alt ?? "";
+    canonicalImg.width = imageNode.naturalWidth;
+    canonicalImg.height = imageNode.naturalHeight;
+
+
+    const shoppingMeta = metadataNode.cloneNode(true);
+
+    const shoppingCard = document.createElement('div');
+
+    shoppingCard.className = 'shopping-card';
+
+    shoppingCard.append(
+        canonicalImg,
+        shoppingMeta
+    );
+
+    canonicalShoppingGallery.appendChild(
+        shoppingCard
+    );
+
+    imageNode.dataset.extracted = "true";
+  }
+
+  return {
+    canonicalShoppingGallery,
+    images,
+    image_ids
+  };
+}
+
+
 // Message section extractor
 async function extractMessage(messageNode, index = 0) {
   const messageNodeId = requireComponent(
@@ -61,24 +148,15 @@ async function extractMessage(messageNode, index = 0) {
     "Message ID missing in passed in messageNode"
   );
 
-  const conversation = await getConversationById(conversationId);
+  let conversation = await getConversationById(conversationId);
 
   const role = messageNode.dataset.messageAuthorRole;
   
-  const model = messageNode
+  const model = messageNode?.dataset.messageModelSlug ?? messageNode
     ?.querySelector("[data-message-model-slug]")
     ?.dataset?.messageModelSlug ?? null;
 
-  
-  if (conversation.model == null && model != null) {
-    conversation.model = model;
-    await saveConversation(conversation);
-  }
 
-
-    // content_html
-  //console.log(messageNode);
-  //const content = messageNode.cloneNode(true);
   const content = messageNode;
   //console.log(messageNode);
 
@@ -91,6 +169,26 @@ async function extractMessage(messageNode, index = 0) {
 
   for (const imageNodeImage of imageNodeImages) {
     
+
+    // Find Shopping Galleries
+    const shoppingGalleryNode = imageNodeImage.closest('[data-testid="products-widget"]');
+
+    if (shoppingGalleryNode) {
+
+        if (imageNodeImage.dataset.extracted) { continue; }
+
+        const shoppingContext = await extractShoppingGallery(shoppingGalleryNode);
+
+        const canonicalShoppingGallery = shoppingContext.canonicalShoppingGallery;
+        images.push(...shoppingContext.images);
+        image_ids.push(...shoppingContext.image_ids);
+
+        shoppingGalleryNode.replaceWith(canonicalShoppingGallery);
+
+        continue;
+    }
+
+
     // Find common ancestor & proceed
     let currentNode = imageNodeImage.parentElement.closest(".group\\/search-image");;  
     let nextNode = null;
@@ -152,6 +250,8 @@ async function extractMessage(messageNode, index = 0) {
       canonicalImg.dataset.imageId = canonicalImage.id;
       canonicalImg.dataset.imageHash = canonicalImage.hash;
       canonicalImg.alt = canonicalImage.alt ?? "";
+      canonicalImg.width = imageNode.naturalWidth;
+      canonicalImg.height = imageNode.naturalHeight;
 
       imgWrapper.appendChild(canonicalImg);
 
@@ -199,11 +299,19 @@ async function extractMessage(messageNode, index = 0) {
       canonicalImg.dataset.imageId = canonicalImage.id;
       canonicalImg.dataset.imageHash = canonicalImage.hash;
       canonicalImg.alt = canonicalImage.alt ?? "";
+      canonicalImg.width = imageNode.naturalWidth;
+      canonicalImg.height = imageNode.naturalHeight;
 
       imgWrapper.appendChild(canonicalImg);
     }
       
     imageNode.replaceWith(imgWrapper);
+  }
+
+  
+  // Clean up data-extracted attributes from <img>s
+  for (const node of content.querySelectorAll('[data-extracted]')) {
+    node.removeAttribute('data-extracted');
   }
 
 
@@ -258,6 +366,11 @@ async function extractMessage(messageNode, index = 0) {
     .forEach(el => el.remove());
 
   content.querySelectorAll('[data-testid="collapsible-user-message-toggle"]').forEach(btn => btn.remove());
+
+
+  for (const node of content.querySelectorAll('[style]')) {
+    node.removeAttribute('style');
+  }
 
 
   const content_html = content.innerHTML.trim();

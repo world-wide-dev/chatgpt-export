@@ -196,12 +196,20 @@ img {
   height: auto;
 }
   
-.gallery {
+.gallery, .shopping-gallery {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 
   margin: 1rem 0;
+}
+
+.shopping-gallery {
+  gap: 2rem;
+}
+
+.shopping-gallery .shopping-card {
+  max-width: 240px;
 }
 
 .gallery img {

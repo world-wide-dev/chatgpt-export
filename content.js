@@ -1,5 +1,5 @@
 // ChatGPT Conversation Exporter (Extension)
-// Version 1.0.3
+// Version 1.0.4
 
 function onMessagesReady(callback) {
   let lastCount = 0;
@@ -113,7 +113,7 @@ async function extractAndSave() {
 
   const extractedConversation = await extractConversation();
 
-  const conversation = {
+  let conversation = {
     id: conversationId,
     title: dbConversation?.title ?? extractedConversation?.title,
     model: dbConversation?.model ?? null,
@@ -237,8 +237,14 @@ async function extractAndSave() {
     }
     await saveMessage(result.message);
 
+    conversation = await getConversationById(conversationId);
+
     conversation.updated_at = Date.now();
     conversation.last_message_id = result.message.id;
+
+    if (!conversation.model && result.message.model) {
+      conversation.model = result.message.model;
+    }
 
     await saveConversation(conversation);
 
@@ -288,10 +294,22 @@ async function triggerDownload(exportFunction) {
 async function exportHandler(msg, sender, sendResponse) {
   //console.log("[CONTENT] got message:", msg);
   
-  switch (msg.action) {
+  switch (msg.action.message) {
     case "IS_PAGE_LOADED":
       console.log("IS_PAGE_LOADED query received");
       sendResponse(isPageLoaded);
+      break;
+
+    case "GET_CURRENT_CONVERSATION":
+      console.log("GET_CURRENT_CONVERSATION query received");
+      sendResponse(await getConversationById(conversationId));
+      break;
+
+    case "UPDATE_CONVERSATION_META":
+      console.log("UPDATE_CONVERSATION_META query received");
+      await saveConversation(msg.action.payload);
+      const newConversation = await getConversationById(msg.action.payload.id);
+      sendResponse(newConversation);
       break;
 
     case "EXTRACT":
@@ -352,6 +370,7 @@ async function main() {
     stopObserver();
     await updateConversationProgress(conversationId, false);
     console.error(err);
+    console.log("Blame", WHO_IS_TO_BLAME, "for it ^^");
   }
 
   console.log("[DB Saver] Saved messages for this conversation in DB:", (await getConversationMessages(conversationId)).length);
@@ -370,7 +389,7 @@ onMessagesReady(async (readyMessages) => {
   }
 
   await waitForConversationId("Conversation ID missing after hydration retries");
-  console.log(await getConversationById(conversationId));
+  console.log(conversationId);
     
   await resetAllConversations();
   console.log("All conversation.extracting resset to false");
@@ -378,7 +397,7 @@ onMessagesReady(async (readyMessages) => {
   setPageLoaded(true);
 
   /*
-  const convoId = "69f79886-ac48-8328-9d3a-98fa285bce9f";
+  const convoId = conversationId;
   await removeConversationMessages(convoId);
   const resetConversationLastMessageId = await getConversationById(convoId);
   resetConversationLastMessageId.last_message_id = null;
