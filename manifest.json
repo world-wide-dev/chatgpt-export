@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Conversation Exporter",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Local-first ChatGPT conversation exporter",
 
   "permissions": [
@@ -30,7 +30,7 @@
         "https://chat.openai.com/*",
         "https://chatgpt.com/*"
       ],
-      "js": ["vendor/jszip.min.js", "helper.js", "database.js", "extract.js", "vendor/turndown.js", "export.js", "content.js"],
+      "js": ["vendor/jszip.min.js", "helper.js", "database.js", "image-handler.js", "extract.js", "vendor/turndown.js", "export.js", "content.js"],
       "run_at": "document_idle"
     }
   ]

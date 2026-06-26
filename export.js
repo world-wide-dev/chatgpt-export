@@ -110,6 +110,10 @@ async function handleImagesInClonedDOM(div) {
   const imgs = div.querySelectorAll("img");
 
   for (const img of imgs) {
+    if (img.dataset.imageFailed === "true") {
+      continue;
+    }
+    
     const imageId = img.dataset.imageId;
 
     if (!imageId) {
@@ -408,6 +412,10 @@ async function downloadMarkdown() {
     div.innerHTML = message.content_html;
 
     for (const img of div.querySelectorAll('img')) {
+      if (img.dataset.imageFailed === "true") {
+        continue;
+      }
+    
       const image =
       await getImageById(
         img.dataset.imageId

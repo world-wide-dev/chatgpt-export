@@ -1,6 +1,6 @@
 // Helper functions
 
-const EXPORTER_VERSION = "1.0.4";
+const EXPORTER_VERSION = "1.0.5";
   
 
 const WHO_IS_TO_BLAME = "OpenAI";

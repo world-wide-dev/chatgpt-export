@@ -12,7 +12,7 @@ Rather than cloning the ChatGPT UI directly, the extension extracts and normaliz
 
 ## Version
 
-Current version: 1.0.4
+Current version: 1.0.5
 
 ---
 
@@ -57,6 +57,8 @@ The goal is to preserve conversations as durable structured documents.
 - Incremental IndexedDB persistence
 - Safe re-extraction and update handling
 - Local-first architecture
+- Resilient image extraction with automatic fallback recovery
+- Placeholder preservation for unrecoverable images
 
 ---
 
@@ -294,8 +296,9 @@ from canonical semantic representations.
 
 ### Image Preservation
 
-Images are extracted independently from runtime wrappers and reinjected into canonical semantic structures during normalization.
+Multiple extraction strategies are attempted before falling back to a canonical placeholder, allowing extraction to continue even when individual runtime images cannot be recovered.
 Shopping and gallery-style image groups are normalized into canonical gallery structures, allowing deterministic export generation without relying on OpenAI-specific gallery layouts.
+
 
 This avoids runtime-specific layout instability while preserving:
 

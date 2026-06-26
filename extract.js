@@ -54,334 +54,41 @@ async function extractConversation() {
 }
 
 
-async function extractShoppingGallery(shoppingGalleryNode) {
-  const images = [];
-  const image_ids = [];
-
-  const canonicalShoppingGallery = document.createElement('div');
-
-  canonicalShoppingGallery.className = 'shopping-gallery';
-
-  const metadataNodes = shoppingGalleryNode.querySelectorAll('[data-shopping-browse-product-metadata]');
-
-  for (const metadataNode of metadataNodes) {
-
-    let card = metadataNode;
-    let imageNode = null;
-
-    for (let i = 0; i < 3 && !imageNode; i++) {
-        imageNode = card.querySelector('img');
-
-        if (imageNode) { break; }
-
-        card = card.parentElement;
-
-        if (!card) { break; }
-    }
-
-    if (!imageNode) {
-        throw new Error("FATAL ERROR: OPENAI DID IT AGAIN");
-    }    
-
-    if (!imageNode.src) {
-      imageNode.dataset.extracted = "true";
-      continue;
-    }
-
-    
-    const image = await extractImage(imageNode);
-    const existing = await getImageByHash(image.hash);
-
-    let canonicalImage = image;
-
-    if (existing) {
-      // Check if base64 string matches too
-      // - Yes -> skip saving image (still save in message content_html though), continue;
-      // - No -> go on with full save
-      if (existing.data_base64 === image.data_base64) {
-        canonicalImage = existing;
-      }
-    }
-
-    image_ids.push(canonicalImage.id);
-    images.push(canonicalImage);
-
-    const canonicalImg = document.createElement("img");
-
-    canonicalImg.dataset.imageId = canonicalImage.id;
-    canonicalImg.dataset.imageHash = canonicalImage.hash;
-    canonicalImg.alt = canonicalImage.alt ?? "";
-    canonicalImg.width = imageNode.naturalWidth;
-    canonicalImg.height = imageNode.naturalHeight;
-
-
-    const shoppingMeta = metadataNode.cloneNode(true);
-
-    const shoppingCard = document.createElement('div');
-
-    shoppingCard.className = 'shopping-card';
-
-    shoppingCard.append(
-        canonicalImg,
-        shoppingMeta
-    );
-
-    canonicalShoppingGallery.appendChild(
-        shoppingCard
-    );
-
-    imageNode.dataset.extracted = "true";
-  }
-
-  return {
-    canonicalShoppingGallery,
-    images,
-    image_ids
-  };
-}
-
-
 // Message section extractor
-async function extractMessage(messageNode, index = 0) {
-  const messageNodeId = requireComponent(
-    messageNode?.dataset?.messageId,
-    "Message ID missing in passed in messageNode"
+async function extractMessage(content, index = 0) {
+  const contentId = requireComponent(
+    content?.dataset?.messageId,
+    "Message ID missing in passed in content"
   );
 
   let conversation = await getConversationById(conversationId);
 
-  const role = messageNode.dataset.messageAuthorRole;
+  const role = content.dataset.messageAuthorRole;
   
-  const model = messageNode?.dataset.messageModelSlug ?? messageNode
+  const model = content?.dataset.messageModelSlug ?? content
     ?.querySelector("[data-message-model-slug]")
     ?.dataset?.messageModelSlug ?? null;
 
 
-  const content = messageNode;
-  //console.log(messageNode);
+  //console.log(content);
 
 
-  // Image extraction + clone <img> tag src -> dataset.imageId & alt
-  const images = [];
-  const image_ids = [];
+  const { images, image_ids } = await handleImages(content);
 
-  const imageNodeImages = content.querySelectorAll("img");
-
-  for (const imageNodeImage of imageNodeImages) {
-    
-
-    // Find Shopping Galleries
-    const shoppingGalleryNode = imageNodeImage.closest('[data-testid="products-widget"]');
-
-    if (shoppingGalleryNode) {
-
-        if (imageNodeImage.dataset.extracted) { continue; }
-
-        const shoppingContext = await extractShoppingGallery(shoppingGalleryNode);
-
-        const canonicalShoppingGallery = shoppingContext.canonicalShoppingGallery;
-        images.push(...shoppingContext.images);
-        image_ids.push(...shoppingContext.image_ids);
-
-        shoppingGalleryNode.replaceWith(canonicalShoppingGallery);
-
-        continue;
-    }
-
-
-    // Find common ancestor & proceed
-    let currentNode = imageNodeImage.parentElement.closest(".group\\/search-image");;  
-    let nextNode = null;
-    let imageNode = null;    
-    let isGalleryImage = false;
-
-    for (let i = 0; i < 3 && currentNode !== messageNode; i++) {  
-      if (!currentNode?.parentElement) {
-        break;
-      }      
-      const nextNode = currentNode.parentElement;  
-      if (nextNode.querySelectorAll('img').length > 1) {  
-        imageNode = nextNode;
-        isGalleryImage = true;  
-        break;  
-      }  
-      currentNode = nextNode;  
-    }  
-      
-    if (!imageNode) {  
-      imageNode = imageNodeImage;  
-    }
-
-    if (isGalleryImage && imageNode.querySelector('img') !== imageNodeImage) {
-      continue;
-    }
-
-    if (!isGalleryImage && !imageNode.src) {
-      imageNode.remove();
-      continue;
-    }
-
-
-    const imgWrapper = document.createElement("div");
-
-    if (!isGalleryImage) {
-      imgWrapper.className = "non-gallery";
-
-      // Image handling comes here for single (non-gallery) images
-      const image = await extractImage(imageNode);
-      const existing = await getImageByHash(image.hash);
-
-      let canonicalImage = image;
-
-      if (existing) {
-        // Check if base64 string matches too
-        // - Yes -> skip saving image (still save in message content_html though), continue;
-        // - No -> go on with full save
-        if (existing.data_base64 === image.data_base64) {
-          canonicalImage = existing;
-        }
-      }
-
-      image_ids.push(canonicalImage.id);
-      images.push(canonicalImage);
-
-      const canonicalImg = document.createElement("img");
-
-      canonicalImg.dataset.imageId = canonicalImage.id;
-      canonicalImg.dataset.imageHash = canonicalImage.hash;
-      canonicalImg.alt = canonicalImage.alt ?? "";
-      canonicalImg.width = imageNode.naturalWidth;
-      canonicalImg.height = imageNode.naturalHeight;
-
-      imgWrapper.appendChild(canonicalImg);
-
-      if (messageNode.dataset.messageType === 'imagegen') {
-        messageNode.id = `imagegen-${canonicalImg.dataset.imageId}`;
-        messageNode.dataset.messageId = `imagegen-${canonicalImg.dataset.imageId}`;
-        messageNode.dataset.messageHash = canonicalImg.dataset.imageHash;
-      }
-      
-      imageNode.replaceWith(imgWrapper);
-
-      continue;
-    }
-
-    imgWrapper.className = "gallery";
-
-    // Old logic for images in wrapper
-    const imgs = imageNode.querySelectorAll("img");
-
-    for (const img of imgs) {
-      if (!img.src) {
-        img.remove();
-        continue;
-      }
-
-      const image = await extractImage(img);
-      const existing = await getImageByHash(image.hash);
-
-      let canonicalImage = image;
-
-      if (existing) {
-        // Check if base64 string matches too
-        // - Yes -> skip saving image (still save in message content_html though), continue;
-        // - No -> go on with full save
-        if (existing.data_base64 === image.data_base64) {
-          canonicalImage = existing;
-        }
-      }
-
-      image_ids.push(canonicalImage.id);
-      images.push(canonicalImage);
-
-      const canonicalImg = document.createElement("img");
-
-      canonicalImg.dataset.imageId = canonicalImage.id;
-      canonicalImg.dataset.imageHash = canonicalImage.hash;
-      canonicalImg.alt = canonicalImage.alt ?? "";
-      canonicalImg.width = imageNode.naturalWidth;
-      canonicalImg.height = imageNode.naturalHeight;
-
-      imgWrapper.appendChild(canonicalImg);
-    }
-      
-    imageNode.replaceWith(imgWrapper);
-  }
-
+  handlePreCodeTags(content);
   
-  // Clean up data-extracted attributes from <img>s
-  for (const node of content.querySelectorAll('[data-extracted]')) {
-    node.removeAttribute('data-extracted');
-  }
-
-
-  // pre>code -> language
-  const preTags =
-    content.querySelectorAll("pre");
-
-  for (const pre of preTags) {
-
-    pre.querySelectorAll("br")
-      .forEach(br =>
-        br.replaceWith("\n")
-      );
-
-    const code =
-      pre.querySelector("code");
-
-    const language =
-      [...pre.querySelectorAll("div")]
-        .find(el =>
-          !el.contains(code) &&
-          el.textContent?.trim()
-        )
-        ?.textContent
-        ?.trim()
-        ?.toLowerCase();
-
-    const canonicalPre =
-      document.createElement("pre");
-
-    const canonicalCode =
-      document.createElement("code");
-
-    if (language) {
-      canonicalCode.className =
-        `language-${language}`;
-    }
-
-    canonicalCode.textContent =
-      code?.textContent ?? "";
-
-    canonicalPre.appendChild(
-      canonicalCode
-    );
-
-    pre.replaceWith(canonicalPre);
-  }
-
-
-  // Remove obvious UI junk
-  content.querySelectorAll("script, style")
-    .forEach(el => el.remove());
-
-  content.querySelectorAll('[data-testid="collapsible-user-message-toggle"]').forEach(btn => btn.remove());
-
-
-  for (const node of content.querySelectorAll('[style]')) {
-    node.removeAttribute('style');
-  }
+  cleanupMessageHTML(content);
 
 
   const content_html = content.innerHTML.trim();
 
 
   /*
-  requireComponent(messageNodeId, "FATAL ERROR: Message inconsistency: Message failed to provide ID at border control");
+  requireComponent(contentId, "FATAL ERROR: Message inconsistency: Message failed to provide ID at border control");
   */
 
 
-  const id = messageNode.dataset.messageType === 'imagegen' ? messageNode.dataset.messageId : messageNodeId;
+  const id = content.dataset.messageType === 'imagegen' ? content.dataset.messageId : contentId;
 
 
   return {
@@ -403,52 +110,56 @@ async function extractMessage(messageNode, index = 0) {
 }
 
 
-// Image extractor
-async function extractImage(img) {
+function handlePreCodeTags(content) {
+  // pre>code -> language
+  const preTags = content.querySelectorAll("pre");
 
-  const src = requireComponent(
-    img?.src,
-    "Image source missing"
-  );
+  for (const pre of preTags) {
 
-  const { base64, mime } = await fetchImageViaBackground(src);
-  requireComponent(base64, "Image fetch failed:" + src);
+    pre.querySelectorAll("br")
+      .forEach(br =>
+        br.replaceWith("\n")
+      );
 
-  const hash = await hashString(base64);
+    const code = pre.querySelector("code");
 
-  return {
-    id: uuidv7(),
-    hash,
-    src,
-    mime: mime ?? "image/png", // e.g. "image/png"
-    data_base64: base64,
-    alt: img.alt || null,
-    saved_at: Date.now()
+    const language =
+      [...pre.querySelectorAll("div")]
+        .find(el =>
+          !el.contains(code) &&
+          el.textContent?.trim()
+        )
+        ?.textContent
+        ?.trim()
+        ?.toLowerCase();
+
+    const canonicalPre = document.createElement("pre");
+    const canonicalCode = document.createElement("code");
+
+    if (language) {
+      canonicalCode.className = `language-${language}`;
+    }
+
+    canonicalCode.textContent = code?.textContent ?? "";
+
+    canonicalPre.appendChild(canonicalCode);
+
+    pre.replaceWith(canonicalPre);
   }
 }
 
 
-async function fetchImageViaBackground(src) {
-  return new Promise(resolve => {
-    chrome.runtime.sendMessage(
-      { type: "FETCH_IMAGE", src },
-      response => {
-        resolve({
-          base64: response?.base64 || null,
-          mime: response?.mime || null
-        });
-      }
-    );
-  });
-}
+function cleanupMessageHTML(content) {
+  // Remove obvious UI junk
+  content.querySelectorAll("script, style")
+    .forEach(el => el.remove());
+
+  content.querySelectorAll('[data-testid="collapsible-user-message-toggle"]').forEach(btn => btn.remove());
 
 
-async function hashString(str) {
-  const enc = new TextEncoder().encode(str);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return [...new Uint8Array(buf)]
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
+  for (const node of content.querySelectorAll('[style]')) {
+    node.removeAttribute('style');
+  }
 }
 
 

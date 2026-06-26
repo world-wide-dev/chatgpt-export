@@ -1,5 +1,5 @@
 // ChatGPT Conversation Exporter (Extension)
-// Version 1.0.4
+// Version 1.0.5
 
 function onMessagesReady(callback) {
   let lastCount = 0;
@@ -159,6 +159,8 @@ async function extractAndSave() {
     if (!messageNode) {
       return null;
     }
+
+    await sleep(250);
 
     if (messageNode.matches('.group\\/imagegen-image')) {
       const div = document.createElement('div');
@@ -397,13 +399,14 @@ onMessagesReady(async (readyMessages) => {
   setPageLoaded(true);
 
   /*
-  const convoId = conversationId;
+  //const convoId = conversationId;
+  const convoId = '69f79886-ac48-8328-9d3a-98fa285bce9f';
   await removeConversationMessages(convoId);
   const resetConversationLastMessageId = await getConversationById(convoId);
   resetConversationLastMessageId.last_message_id = null;
   await saveConversation(resetConversationLastMessageId);
   */
-
+  
   console.log("[ChatGPT Exporter] page content loaded");
 
   chrome.runtime.onMessage.addListener(exportHandler);
