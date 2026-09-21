@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChatGPT Exporter Archive Manager</title>
+    <link rel="stylesheet" href="archive.css">
+    <script src="database.js"></script>
+    <script src="helper.js"></script>
+    <script src="export.js"></script>
+</head>
+<body>
+
+  <div id="archive-title">
+    <h3>ChatGPT Exporter Archive Manager</h3>
+    <hr/>
+  </div>
+
+  <div id="database-block">
+
+    <div id="database-export">
+      <span id="export-db" class="main-action">[ Export DB ]</span>
+    </div>
+
+    <div id="database-import">
+
+      <div id="import-options">
+        <span>Import:</span>
+
+        <label title="Add the imported entries to the existing database.">
+          <input type="radio" name="import-mode" value="add" checked>
+          Add to database
+        </label>
+
+        <label title="Add the imported entries to the existing database, overwriting entries that already exist.">
+          <input type="radio" name="import-mode" value="overwrite">
+          Add to database (w/ overwrite)
+        </label>
+
+        <label title="Remove all existing database entries, then import the selected database.">
+          <input type="radio" name="import-mode" value="replace">
+          Replace all
+        </label>
+      </div>
+
+      <div id="import-drop">
+        Drop database file here or click to select
+      </div>
+
+      <input
+        type="file"
+        id="import-file"
+        accept=".json"
+        hidden
+      >
+
+    </div>
+
+  </div>
+  <hr/>
+
+  <h4>Saved Conversations</h4>
+  
+  <div id="conversation-list">
+  </div>
+
+  <div id="title-edit-wrapper"><div id="title-edit-block"></div></div>
+
+  <div id="full-page-blocker">
+    <div id="blocker-inner-wrapper">
+      <!-- Optional blocker UI -->
+    </div>
+  </div>
+
+    <script src="shared.js"></script>
+  <script src="archive.js" type="module"></script>
+</body>
+</html>

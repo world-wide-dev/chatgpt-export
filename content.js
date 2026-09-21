@@ -1,5 +1,5 @@
 // ChatGPT Conversation Exporter (Extension)
-// Version 1.0.5
+// Version 1.1.0
 
 function onMessagesReady(callback) {
   let lastCount = 0;
@@ -150,14 +150,12 @@ async function extractAndSave() {
     for (let i = 0; i < 5 && !messageNode; i++) {
       await sleep(50);
 
-      messageNode = wrapper.querySelector(
-        '[data-message-id], .group\\/imagegen-image'
-      );
+      messageNode = wrapper.querySelector('[data-message-id], .group\\/imagegen-image');
       //console.log(messageNode);
     }
 
     if (!messageNode) {
-      return null;
+      return { origNode: null, messageNode: null };
     }
 
     await sleep(250);
@@ -184,15 +182,30 @@ async function extractAndSave() {
 
       div.appendChild(markdown);
 
-      return div;
+      return { origNode: messageNode, messageNode: div };
     }
 
-    return messageNode.cloneNode(true);
+    return { origNode: messageNode, messageNode: messageNode.cloneNode(true) };
+  }
+
+
+  function markWidgets(node) {
+    const widgets = node.querySelectorAll('[data-test-id="dil-widget-shell"]');
+    widgets.forEach((widget, index) => { widget.dataset.cgptExportWidget = index; });
+  }
+
+  function clearWidgetMarks(node) {
+    node.querySelectorAll('[data-cgpt-export-widget]')
+      .forEach(widget => { widget.removeAttribute('data-cgpt-export-widget') });
   }
 
 
   for (const wrapper of wrappers) {
-    const messageNode = await resolveMessageNode(wrapper);
+    // Marking widgets for remapping...
+    markWidgets(wrapper);
+
+    const { origNode, messageNode } = await resolveMessageNode(wrapper);
+    //console.log(origNode, messageNode);
 
     if (!messageNode) {
       continue;
@@ -211,7 +224,10 @@ async function extractAndSave() {
 
     if (!messageIdHit) {
       if (messageNode.dataset.messageType === 'imagegen') {
-        const result = await extractMessage(messageNode, messageIndex);
+        const result = await extractMessage(origNode, messageNode, messageIndex);
+
+        clearWidgetMarks(origNode);
+        clearWidgetMarks(messageNode);
         
         if (result.message.id === shouldHaveLastMessageId) {
           messageIdHit = true;
@@ -232,8 +248,11 @@ async function extractAndSave() {
       continue;
     }
 
-    const result = await extractMessage(messageNode, messageIndex);
+    const result = await extractMessage(origNode, messageNode, messageIndex);
 
+    clearWidgetMarks(origNode);
+    clearWidgetMarks(messageNode);
+        
     for (const image of result.images) {
       await saveImage(image);
     }
@@ -293,6 +312,8 @@ async function triggerDownload(exportFunction) {
 }
 
 
+let extractingRightNow = false;
+
 async function exportHandler(msg, sender, sendResponse) {
   //console.log("[CONTENT] got message:", msg);
   
@@ -314,9 +335,16 @@ async function exportHandler(msg, sender, sendResponse) {
       sendResponse(newConversation);
       break;
 
+    case "GET_EXTRACTION_STATE":
+      console.log("GET_EXTRACTION_STATE message received");
+      sendResponse(extractingRightNow);
+      break;
+
     case "EXTRACT":
       console.log("EXTRACT message received");
+      extractingRightNow = true;
       await main();
+      extractingRightNow = false;
       break;
 
     case "EXPORT_MD":
@@ -398,15 +426,6 @@ onMessagesReady(async (readyMessages) => {
 
   setPageLoaded(true);
 
-  /*
-  //const convoId = conversationId;
-  const convoId = '69f79886-ac48-8328-9d3a-98fa285bce9f';
-  await removeConversationMessages(convoId);
-  const resetConversationLastMessageId = await getConversationById(convoId);
-  resetConversationLastMessageId.last_message_id = null;
-  await saveConversation(resetConversationLastMessageId);
-  */
-  
   console.log("[ChatGPT Exporter] page content loaded");
 
   chrome.runtime.onMessage.addListener(exportHandler);

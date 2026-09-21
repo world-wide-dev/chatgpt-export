@@ -12,7 +12,7 @@ Rather than cloning the ChatGPT UI directly, the extension extracts and normaliz
 
 ## Version
 
-Current version: 1.0.5
+Current version: 1.1.0
 
 ---
 
@@ -49,10 +49,14 @@ The goal is to preserve conversations as durable structured documents.
 - Deterministic Markdown export
 - JSON export
 - Full database dump export
+- Database import / restore
+- Conversation archive management
+- Conversation metadata inspection and editing
+- Conversation and message removal
+- Archive-level Markdown, HTML, and JSON exports
 - Canonical image extraction and preservation
 - Gallery reconstruction
 - Shopping gallery extraction and normalization
-- Conversation metadata inspection
 - Editable conversation titles
 - Incremental IndexedDB persistence
 - Safe re-extraction and update handling
@@ -106,6 +110,22 @@ If the extension is reloaded while ChatGPT is already open, the popup may offer 
 When opened on unsupported pages, the extension displays guidance instead of attempting extraction.
 
 ---
+
+### Archive
+
+The archive provides a full-page view of locally stored conversations.
+
+From the archive you can:
+
+- inspect conversation metadata
+- edit conversation titles
+- export individual conversations as Markdown, HTML, or JSON
+- delete messages from a conversation
+- remove complete conversations
+- export a full database dump
+- import / restore database data
+
+All archive operations work against the locally stored IndexedDB snapshot rather than the live ChatGPT DOM.
 
 ## How It Works
 
@@ -446,32 +466,75 @@ The export prioritizes readability and durability over visual fidelity to the li
 - deterministic HTML export
 - JSON export
 - full database dump export
+- database import / restore
+- archive management
+- conversation metadata inspection and editing
+- conversation and message removal
+- archive-level conversation exports
 - code block normalization
 - language-aware fenced code blocks
+- code copy buttons in HTML exports
 - image preservation and gallery reconstruction
+- DIL widget screenshot support
+- screenshot fallback for failed images
 - conversation metadata manifests
 - idempotent extraction pipeline
 
 ---
 
-## Roadmap
+## Future Possible Improvements
 
-### v1.1.0
+These are possible future improvements and areas I'd like to explore. They are not commitments or a fixed development roadmap, and priorities may change over time.
 
-- syntax highlighting
-- code block copy buttons
-- code export UX improvements
+### ✨ UX & Polish
 
-### v2.0.0
+- Re-render conversation metadata after extraction.
+- Re-render conversation metadata after message saves.
+- Add conversation and image counters to the popup.
 
-- conversation switching
-- archive management
-- metadata editing expansion
-- runtime synchronization improvements
-- cross-conversation state handling
-- archive lifecycle management
+### 📊 Archive QA & Diagnostics
 
----
+- Add DOM/database message-count comparisons.
+- Add image-count information.
+- Add export statistics.
+- Detect missing messages and images.
+- Add archive consistency validation.
+- Add extraction integrity helpers.
+- Consider extraction and database event logging.
+
+### 📤 Export Features
+
+- Add syntax highlighting to exported code.
+- Further improve HTML exports.
+- Improve overall export UX and presentation.
+
+### 🏛️ Architecture
+
+- Add support for future semantic block types.
+
+### 🛠️ Customization
+
+- Support a user script before extraction.
+- Support a user script after extraction.
+- Explore a local customization file.
+- Document user hooks and customization options.
+
+### 🗄️ Archive Management
+
+- Further expand archive management.
+- Add conversation switching.
+- Add runtime synchronization between archive state and active conversations.
+- Improve cross-conversation state handling.
+- Explore a more complete archive lifecycle.
+
+### ♾️ Future OpenAI Crimes™
+
+- Support new widgets as they appear.
+- Support new writing-block variants.
+- Support new image layouts.
+- Adapt to future DOM reshuffles.
+- Whatever the hell OpenAI invents next. 😅
+
 
 ## Notes
 

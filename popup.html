@@ -3,21 +3,91 @@
   <head>
     <title>ChatGPT Exporter</title>
     <link rel="stylesheet" href="popup.css">
+    <script src="database.js"></script>
   </head>
   <body>
-    <h3>ChatGPT Export</h3>
-    <hr/>
-    <div class="action-button" id="extract">[ Extract Conversation ]</div>
-    <hr/>
-    <div class="action-button" id="export-md">[ Export Markdown ]</div>
-    <div class="action-button" id="export-html">[ Export HTML ]</div>
-    <div class="action-button" id="export-json">[ Export JSON ]</div>
-    <div class="action-button" id="export-all">[ Export All ]</div>
-    <div id="popup-conversation-meta"></div>
-    <div id="page-load-block">
-      <div id="page-loading"></div>
-      <span id="page-loading-label">Awaiting page load...</span>
+
+    <div id="popup-title">
+      <h3>ChatGPT Export</h3>
+      <hr/>
     </div>
+
+    <div id="main">
+
+      <div id="actions">
+        <div class="action-button" id="extract">[ Extract Conversation ]</div>
+        <hr/>
+        <div class="action-button" id="export-md">[ Export Markdown ]</div>
+        <div class="action-button" id="export-html">[ Export HTML ]</div>
+        <div class="action-button" id="export-json">[ Export JSON ]</div>
+        <hr/>
+      </div>
+
+      <div id="popup-conversation-meta"></div>
+
+      <div id="title-edit-block"></div>
+
+      <div id="page-load-block">
+        <div id="page-loading"></div>
+        <span id="page-loading-label">Awaiting page load...</span>
+      </div>
+
+    </div>
+
+    <div id="dev">
+      <div id="database-block">
+
+        <div id="database-export">
+          <span id="export-db" class="main-action">[ Export DB ]</span>
+        </div>
+
+        <div id="database-import">
+
+          <div id="import-options">
+            <span>Import:</span>
+
+            <label title="Add the imported entries to the existing database.">
+              <input type="radio" name="import-mode" value="add" checked>
+              Add to database
+            </label>
+
+            <label title="Add the imported entries to the existing database, overwriting entries that already exist.">
+              <input type="radio" name="import-mode" value="overwrite">
+              Add to database (w/ overwrite)
+            </label>
+
+            <label title="Remove all existing database entries, then import the selected database.">
+              <input type="radio" name="import-mode" value="replace">
+              Replace all
+            </label>
+          </div>
+
+          <div id="import-drop">
+            Drop database file here or click to select
+          </div>
+
+          <input
+            type="file"
+            id="import-file"
+            accept=".json"
+            hidden
+          >
+
+        </div>
+
+      </div>
+      <hr/>
+
+      <div class="action-button" id="open-full-page">[ Show Conversation List ]</div>
+    </div>
+
+    <div id="full-page-blocker">
+      <div id="blocker-inner-wrapper">
+        <!-- Optional blocker UI -->
+      </div>
+    </div>
+
+    <script src="shared.js"></script>
     <script src="popup.js" type="module"></script>
   </body>
 </html>

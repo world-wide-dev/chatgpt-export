@@ -259,3 +259,117 @@ async function removeConversationMessages(convoId /* = conversationId */) {
 }
 
 
+async function getConversations() {
+  return await getStore("conversations");
+}
+
+
+async function getMessageCount(convoId) {
+  // SELECT COUNT(message.conversation_id) FROM messages WHERE conversation_id = ?;
+
+  const db = await dbPromise;
+
+  return new Promise((resolve, reject) => {
+
+    const tx = db.transaction("messages", "readonly");
+    const store = tx.objectStore("messages");
+    const index = store.index("conversation_id");
+
+    const request = index.count(convoId);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+
+async function removeConversation(convoId) {
+  // remove the entire conversation data (conversation entry + all messages)
+
+  await removeConversationMessages(convoId);
+
+  const db = await dbPromise;
+
+  return new Promise((resolve, reject) => {
+
+    const tx = db.transaction("conversations", "readwrite");
+    const store = tx.objectStore("conversations");
+
+    const request = store.delete(convoId);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+
+/*
+export {
+  getConversations,
+  getConversationById,
+  getMessageCount,
+  removeConversationMessages,
+  removeConversation
+};
+*/
+
+
+async function clearStore(storeName) {
+    const db = await dbPromise;
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+
+        const request = store.clear();
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+
+async function floodStorePut(storeName, dataArray) {
+    const db = await dbPromise;
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+
+        for (const data of dataArray) {
+            store.put(data);
+        }
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    });
+}
+
+
+async function floodStoreAdd(storeName, dataArray) {
+    const db = await dbPromise;
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+
+        for (const data of dataArray) {
+            const request = store.add(data);
+
+            // Existing entries are intentionally ignored.
+            request.onerror = (event) => {
+                if (request.error?.name === "ConstraintError") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            };
+        }
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    });
+}
+
+

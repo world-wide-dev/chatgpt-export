@@ -1,5 +1,8 @@
 # forbidden hydration knowledge
+assets/
+dom-examples/
 misc/
+notes/
 releases/
 snapshots/
 test/

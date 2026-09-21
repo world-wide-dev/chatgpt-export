@@ -84,8 +84,8 @@ async function extractShoppingGallery(shoppingGalleryNode) {
     canonicalImg.dataset.imageId = canonicalImage.id;
     canonicalImg.dataset.imageHash = canonicalImage.hash;
     canonicalImg.alt = canonicalImage.alt ?? "";
-    canonicalImg.width = imageNode.naturalWidth;
-    canonicalImg.height = imageNode.naturalHeight;
+    canonicalImg.width = imageNode.width ?? 0;
+    canonicalImg.height = imageNode.height ?? 0;
 
 
     const shoppingMeta = metadataNode.cloneNode(true);
@@ -243,8 +243,8 @@ async function fetchImageViaCanvas(img) {
 
     const canvas = document.createElement("canvas");
 
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+    canvas.width = img.width ?? 0;
+    canvas.height = img.height ?? 0;
 
     const ctx = canvas.getContext("2d");
 
@@ -317,10 +317,12 @@ async function extractImageWithFallbacks(img) {
   if (candidateUrls.length === 0) {  
     throw new Error('[Image Extractor] No candidate URLs found');  
   }  
+
+  let image;
   
   for (const url of candidateUrls) {  
   
-    const image = await fetchImageViaBackground(url);  
+    image = await fetchImageViaBackground(url);  
   
     if (validateImageObject(image)) {  
       return {  
@@ -332,7 +334,7 @@ async function extractImageWithFallbacks(img) {
       
   for (const url of candidateUrls) {  
   
-    const image = await fetchImageViaDirect(url);  
+    image = await fetchImageViaDirect(url);  
   
     if (validateImageObject(image)) {  
       return {  
@@ -342,7 +344,7 @@ async function extractImageWithFallbacks(img) {
     }  
   }  
       
-  const image = await fetchImageViaCanvas(img);  
+  image = await fetchImageViaCanvas(img);  
   
   if (validateImageObject(image)) {  
     return {  
@@ -351,6 +353,20 @@ async function extractImageWithFallbacks(img) {
     };  
   }  
   
+  // Screenshot fallback
+  image = await takeNodeScreenshot(img, { bannerOn: true, bannerText: "Taking screenshot of <img> as a fallback last resort..." });
+
+  if (validateImageObject(image)) {
+    return {
+      placeholder: false,
+
+      width: image?.width ?? 0,
+      height: image?.height ?? 0,
+
+      canonicalImageObject: await completeImageObject(image, img, img.src,"screenshot")
+    };
+  }
+
   // If none of the above works, return placeholder image object  
   return {  
     placeholder: true,  
@@ -359,7 +375,7 @@ async function extractImageWithFallbacks(img) {
 }
 
 
-async function handleImages(content) {
+async function handleImages(content, options = {}) {
   // Image extraction + clone <img> tag src -> dataset.imageId & alt
   const images = [];
   const image_ids = [];
@@ -367,14 +383,41 @@ async function handleImages(content) {
   const imageNodeImages = content.querySelectorAll("img");
 
   for (const imageNodeImage of imageNodeImages) {
-    
+
+    if (imageNodeImage.dataset.extracted === "true") continue;
+
+
+    // Widget image handler logic
+    if (!options.includeWidgetImages && imageNodeImage.closest('[data-test-id="dil-widget-shell"]')) continue;
+
+
+    // Product Crap Gallery logic
+    let foundProductGallery = false;
+    let productGalleryIterNode = imageNodeImage;
+
+    for (let i = 0; i < 3 && productGalleryIterNode && productGalleryIterNode !== content; i++) {
+
+      const productGalleryItems = productGalleryIterNode.querySelectorAll('[data-shopping-product-image-pdp-click-target]');
+      
+      if (productGalleryItems.length > 1) {
+        productGalleryIterNode.dataset.removeMe = "true";
+        productGalleryIterNode.querySelectorAll('img').forEach(item => { item.dataset.extracted = "true"; });
+        foundProductGallery = true;
+        break;
+      }
+
+      productGalleryIterNode = productGalleryIterNode.parentElement;
+    }
+
+    if (foundProductGallery) { continue; }
+
 
     // Find Shopping Galleries
     const shoppingGalleryNode = imageNodeImage.closest('[data-testid="products-widget"]');
 
     if (shoppingGalleryNode) {
 
-        if (imageNodeImage.dataset.extracted) { continue; }
+        //if (imageNodeImage.dataset.extracted) { continue; }
 
         const shoppingContext = await extractShoppingGallery(shoppingGalleryNode);
 
@@ -444,8 +487,8 @@ async function handleImages(content) {
       canonicalImg.dataset.imageId = canonicalImage.id;
       canonicalImg.dataset.imageHash = canonicalImage.hash;
       canonicalImg.alt = canonicalImage.alt ?? "";
-      canonicalImg.width = imageNode.naturalWidth;
-      canonicalImg.height = imageNode.naturalHeight;
+      canonicalImg.width = imageNode.width ?? 0;
+      canonicalImg.height = imageNode.height ?? 0;
 
       imgWrapper.appendChild(canonicalImg);
 
@@ -481,8 +524,8 @@ async function handleImages(content) {
           imageResult.canonicalImageObject.dataset
         );
 
-        canonicalImg.width = imageNode.naturalWidth;
-        canonicalImg.height = imageNode.naturalHeight;
+        canonicalImg.width = imageNode.width ?? 0;
+        canonicalImg.height = imageNode.height ?? 0;
 
       } else {
 
@@ -505,8 +548,8 @@ async function handleImages(content) {
         canonicalImg.dataset.imageId = canonicalImage.id;
         canonicalImg.dataset.imageHash = canonicalImage.hash;
         canonicalImg.alt = canonicalImage.alt ?? "";
-        canonicalImg.width = imageNode.naturalWidth;
-        canonicalImg.height = imageNode.naturalHeight;
+        canonicalImg.width = imageResult?.width ?? imageNode.width ?? 0;
+        canonicalImg.height = imageResult?.height ?? imageNode.height ?? 0;
 
       }
     
@@ -541,8 +584,8 @@ async function handleImages(content) {
           imageResult.canonicalImageObject.dataset
         );
 
-        canonicalImg.width = img.naturalWidth;
-        canonicalImg.height = img.naturalHeight;
+        canonicalImg.width = img.width ?? 0;
+        canonicalImg.height = img.height ?? 0;
 
       } else {
         const existing = await getImageByHash(imageResult.canonicalImageObject.hash);
@@ -564,8 +607,8 @@ async function handleImages(content) {
         canonicalImg.dataset.imageId = canonicalImage.id;
         canonicalImg.dataset.imageHash = canonicalImage.hash;
         canonicalImg.alt = canonicalImage.alt ?? "";
-        canonicalImg.width = imageNode.naturalWidth;
-        canonicalImg.height = imageNode.naturalHeight;
+        canonicalImg.width = imageResult?.width ?? imageNode.width ?? 0;
+        canonicalImg.height = imageResult?.height ?? imageNode.height ?? 0;
 
       }
 

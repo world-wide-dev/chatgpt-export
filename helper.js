@@ -1,9 +1,104 @@
 // Helper functions
 
-const EXPORTER_VERSION = "1.0.5";
+const EXPORTER_VERSION = "1.1.0";
   
 
 const WHO_IS_TO_BLAME = "OpenAI";
+
+
+// Extractor CSS code 
+const BANNER_CSS = `  
+#cgpt-export-banner {
+  position: fixed;
+
+  top: 0;
+  left: 0;
+
+  width: 100vw;
+  height: 100vh;
+
+  box-sizing: border-box;
+
+  pointer-events: none;
+  cursor: none;
+
+  z-index: 2147483647;
+}
+
+#cgpt-export-render-surface {
+    margin: auto;
+} 
+`;
+  
+const SCREENSHOT_CSS = `  
+ .cgpt-export-screenshot {
+    box-sizing: border-box;
+  }
+`;  
+ 
+const EXTRACTOR_CSS_SNIPPETS = [  
+  {
+    name: "banner", 
+    css: BANNER_CSS
+  },
+  {
+    name: "screenshot", 
+    css: SCREENSHOT_CSS
+  }
+];  
+  
+for (const { name, css } of EXTRACTOR_CSS_SNIPPETS) {
+  const style = document.createElement("style");
+
+  style.dataset.cgptExport = name;
+  style.textContent = css;
+
+  document.head.append(style);
+}
+
+
+// Extractor helper full screen banner 
+// for screenshots or anything else in the future
+class Banner {
+
+  constructor() {
+    this._html = document.createElement("div");
+
+    this._html.id = "cgpt-export-banner";
+    this._html.className = "cgpt-export-banner";
+
+    this._title = document.createElement("h2");
+    this._renderSurface = document.createElement("div");
+
+    this._renderSurface.id = "cgpt-export-render-surface";
+    this._renderSurface.className = "cgpt-export-render-surface";
+
+    this._html.append(
+      this._title,
+      this._renderSurface
+    );
+  }
+
+  get renderSurface() {
+    return this._renderSurface;
+  }
+
+  on(title = "") {
+    this._title.textContent = title;
+
+    if (!this._html.isConnected) {
+      document.body.append(this._html);
+    }
+  }
+
+  off() {
+    this._title.textContent = '';
+    this._html.remove();
+  }
+}
+
+// Call it right away, because a single global instance is needed
+const giantBanner = new Banner();
 
 
 let conversationId = null;
@@ -155,6 +250,93 @@ function normalizeConversationTitle(conversationTitle = document.title) {
     .replace(/^-|-$/g, "");
 
   return normalized || "conversation";
+}
+
+
+async function nextFrame() {
+  await new Promise(resolve =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(resolve)
+    )
+  );
+}
+
+
+async function prepareForWidget(content) {
+  if (!content.querySelector('[data-test-id="dil-widget-shell"]')) {
+    return false;
+  }
+
+  await nextFrame();
+  await sleep(1000);
+
+  return true;
+}
+
+
+async function takeNodeScreenshot(node, options = {}) {
+
+  function prepareClone() {
+    clone.classList.add("cgpt-export-screenshot");
+
+    // Remove blinking cursor
+    // Remove copy buttons
+    // Pause animations
+    // Expand collapsed sections
+  }
+
+  const imageFormat = 'image/png';
+
+  let clone = null;
+
+  try {
+    let canvas;
+
+    if (options.bannerOn) {
+      // clone
+      clone = node.cloneNode(true);
+
+      prepareClone();
+
+      if (!giantBanner.renderSurface.isConnected) {
+        giantBanner.on(options.bannerText);
+      }
+
+      giantBanner.renderSurface.append(clone);
+
+      // html2canvas
+      canvas = await html2canvas(clone);
+    }
+    else {
+      canvas = await html2canvas(node);
+    }
+
+    const rect = (clone ?? node).getBoundingClientRect();
+
+    // blobToBase64()
+    const dataUrl = canvas.toDataURL(imageFormat);
+
+    const base64 = dataUrl.split('base64,')[1] ?? null;
+    const mime = imageFormat;
+
+    return { 
+      base64, 
+      mime,
+
+      width: rect.width,
+      height: rect.height
+    }
+  }
+  catch(err) {
+    console.warn(err);
+    return { base64: null, mime: null };
+  }
+  finally {
+    clone?.remove();
+    if (options.bannerOn) {
+      giantBanner.off();
+    }
+  }
 }
 
 

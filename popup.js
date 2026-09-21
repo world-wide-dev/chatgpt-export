@@ -26,6 +26,8 @@ function sendAwaitResponse(action) {
 
 
 function renderTitleEditor(conversation) {
+  const root = document.querySelector("#title-edit-block");
+
   const overlay = document.createElement('div');
 
   overlay.id = 'editor-overlay';
@@ -94,12 +96,12 @@ function renderTitleEditor(conversation) {
     const newTitle = textbox.value.trim();
     
     if (newTitle === "") {
-      overlay.remove();
+      root.replaceChildren();
       return;
     }
 
     if (newTitle === conversation.title) {
-      overlay.remove();
+      root.replaceChildren();
       return;
     }
     
@@ -122,7 +124,7 @@ function renderTitleEditor(conversation) {
         }
       });
 
-      overlay.remove();
+      root.replaceChildren();
 
       renderConversationMeta(updatedConversation);
 
@@ -139,7 +141,7 @@ function renderTitleEditor(conversation) {
 
   const cancelButton = document.createElement('button');
   cancelButton.textContent = 'Cancel';
-  cancelButton.onclick = () => overlay.remove();
+  cancelButton.onclick = () => root.replaceChildren();
 
   const editorButtonsDiv = document.createElement('div');
   editorButtonsDiv.className = 'editor-buttons';
@@ -147,15 +149,13 @@ function renderTitleEditor(conversation) {
   editorButtonsDiv.append(saveButton, cancelButton);
 
   overlay.append(
-    hr,
     label,
     textbox,
-    editorButtonsDiv
+    editorButtonsDiv,
+    hr
   );
 
-  const root = document.querySelector("#popup-conversation-meta");
-
-  root.appendChild(overlay);
+  root.replaceChildren(overlay);
   
   textbox.focus();
   textbox.select();
@@ -169,7 +169,6 @@ function renderConversationMeta(conversation) {
     const container = document.createElement("div");
 
     container.innerHTML = `
-<hr/>
 <div>
   <p class="meta-title">Conversation Metadata</p>
   <p class="meta-key">Title</p>
@@ -181,6 +180,7 @@ function renderConversationMeta(conversation) {
   <p class="meta-key">Last Message ID</p>
   <p class="meta-value meta-value-last-message-id">${conversation.last_message_id}</p>
 </div>
+<hr/>
 `;
 
     const titleNode = container.querySelector('.meta-value-title');
@@ -188,6 +188,82 @@ function renderConversationMeta(conversation) {
 
     root.replaceChildren(container);
 }
+
+
+async function popupImportData(file) {
+  if (!file) return;
+
+  importingRightNow = true;
+
+  try {
+    const data = await parseAndValidate(file);
+
+    const selectedMode = document.querySelector('input[name="import-mode"]:checked')?.value;
+
+    if (!selectedMode) return;
+
+    switch (selectedMode) {
+      case 'add':
+        await saveImportedData(data, {
+          overwrite: false
+        });
+        break;
+
+      case 'overwrite':
+        await saveImportedData(data, {
+          overwrite: true
+        });
+        break;
+
+      case 'replace':
+        if(await clearDatabase()) {
+
+          // If cancelled, don't continue.
+          // Otherwise import with whatever overwrite value.
+          await saveImportedData(data, {
+            overwrite: true
+          });
+        }
+        break;
+    }
+  }
+  catch (error) {
+    alert("Invalid database file.");
+    return;
+  }
+  finally {
+    importingRightNow = false;
+  }
+}
+
+
+function popupInitImporter() {
+  const importDrop = document.getElementById('import-drop');
+  const importFile = document.getElementById('import-file');
+
+  importDrop.addEventListener('drop', async (event) => {
+    event.preventDefault();
+
+    const file = event.dataTransfer.files[0];
+
+    await popupImportData(file); // call respective importData() function 
+  });
+
+  importDrop.addEventListener('click', () => {
+      importFile.click();
+  });
+
+  importFile.addEventListener('change', async () => {
+      const file = importFile.files[0];
+
+      importFile.value = '';
+
+      await popupImportData(file); // call respective importData() function
+  });
+}
+
+
+let importingRightNow = false;
 
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -216,6 +292,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("export-all").onclick = () => {
     console.log("[POPUP] Clicked Export DataBase");
     send({ message: "EXPORT_DB", payload: null });
+  };
+
+  document.getElementById("open-full-page").onclick = () => {
+    console.log("[POPUP] Clicked Open Full Page");
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("archive.html")
+    });
   };
 
   // Page loaded - Unlock action buttons
@@ -316,6 +399,35 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   
   const interval = setInterval(refreshReadyState, 100);
+
+  popupInitImporter();
+
+  let blockerVisible = false;
+
+  setInterval(async () => {
+    const extracting = await sendAwaitResponse({
+      message: "GET_EXTRACTION_STATE"
+    });
+
+    const importing = importingRightNow;
+
+    if (!blockerVisible && extracting) {
+      showBlocker(createExtractBlockerUI());
+      blockerVisible = true;
+      return;
+    }
+
+    if (!blockerVisible && importing) {
+      showBlocker(createImportBlockerUI());
+      blockerVisible = true;
+      return;
+    }
+
+    if (blockerVisible && !extracting && !importing) {
+      hideBlocker();
+      blockerVisible = false;
+    }
+  }, 250);
 });
 
 
